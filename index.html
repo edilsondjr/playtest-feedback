@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playtest Feedback</title>
+<meta name="robots" content="noindex">
+<style>
+  :root { --bg:#15161a; --panel:#1e2026; --line:#33363f; --fg:#e8e8ea; --dim:#9aa0ab; --accent:#e0a24a; --ok:#5fb47a; --err:#e2665f; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:16px/1.5 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { font-size:1.5rem; margin:0 0 4px; }
+  .sub { color:var(--dim); font-size:.9rem; margin:0 0 20px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; margin-bottom:16px; }
+  .field { margin-bottom:22px; }
+  .field:last-child { margin-bottom:0; }
+  label.en { display:block; font-weight:600; }
+  label.pt { display:block; color:var(--dim); font-size:.85rem; margin-top:2px; }
+  .req { color:var(--accent); font-weight:700; }
+  .hint { color:var(--dim); font-size:.82rem; margin:6px 0 8px; }
+  input[type=text], textarea, select {
+    width:100%; margin-top:8px; padding:10px 12px; background:#14151a; color:var(--fg);
+    border:1px solid var(--line); border-radius:7px; font:inherit; }
+  textarea { min-height:120px; resize:vertical; }
+  input:focus, textarea:focus, select:focus { outline:2px solid var(--accent); outline-offset:1px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  button { font:inherit; padding:10px 14px; border-radius:7px; border:1px solid var(--line);
+           background:#2a2d36; color:var(--fg); cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#1a1408; font-weight:700; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .msg { margin-top:10px; font-size:.9rem; min-height:1.2em; }
+  .msg.err { color:var(--err); }
+  .msg.ok { color:var(--ok); }
+  #report { display:none; }
+  #report textarea { font-family:ui-monospace, Consolas, monospace; font-size:.85rem; min-height:260px; }
+  footer { color:var(--dim); font-size:.8rem; margin-top:24px; }
+  code { background:#14151a; padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Playtest feedback</h1>
+  <p class="sub">Bug reports and suggestions for the current test build / <br>
+     Relatos de bug e sugest&otilde;es para a build de teste atual.</p>
+
+  <form id="form" novalidate>
+    <div class="card">
+      <div class="field">
+        <label class="en" for="what">What happened? <span class="req">*</span></label>
+        <label class="pt" for="what">O que aconteceu? Descreva o problema ou a sugest&atilde;o.</label>
+        <p class="hint">Be as specific as you can: what you expected, what you got. / Seja espec&iacute;fico: o que voc&ecirc; esperava e o que aconteceu.</p>
+        <textarea id="what" name="what_happened" required></textarea>
+      </div>
+
+      <div class="field">
+        <label class="en" for="steps">Steps to reproduce <span class="req">*</span></label>
+        <label class="pt" for="steps">Passos para reproduzir</label>
+        <p class="hint">Numbered steps from a fresh run, if you can reproduce it. / Passos numerados desde o in&iacute;cio da run, se conseguir reproduzir.</p>
+        <textarea id="steps" name="repro_steps" required></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <label class="en" for="device">Device / model <span class="req">*</span></label>
+        <label class="pt" for="device">Aparelho / modelo</label>
+        <p class="hint">e.g. <code>Windows 11 desktop, i5-9400F / 16 GB / GTX 1660</code> or <code>Notebook Acer Win10</code>. / Ex.: desktop ou notebook com sistema e specs.</p>
+        <input type="text" id="device" name="device" required>
+        <div class="row">
+          <button type="button" id="detect">Detect from my browser / Detectar</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="en" for="version">Game version / build <span class="req">*</span></label>
+        <label class="pt" for="version">Vers&atilde;o do jogo / build</label>
+        <p class="hint">Shown in the title bar / on the game screen (e.g. <code>v0.2.0</code>). / Aparece no t&iacute;tulo da janela ou na tela do jogo.</p>
+        <input type="text" id="version" name="build" required>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <label class="en" for="shot">Screenshot link (optional)</label>
+        <label class="pt" for="shot">Link de captura de tela (opcional)</label>
+        <p class="hint">
+          This page cannot accept file uploads &mdash; paste a link instead (Imgur, Discord message link,
+          Drive/OneDrive share link, Steam screenshot). If you cannot upload anywhere, just attach the image
+          in the playtest chat and say so here.<br>
+          Esta p&aacute;gina n&atilde;o recebe upload de arquivo &mdash; cole um link. Se n&atilde;o conseguir subir a imagem,
+          anexe no chat do playtest e diga isso aqui.
+        </p>
+        <input type="text" id="shot" name="screenshot_url">
+      </div>
+
+      <div class="field">
+        <label class="en" for="severity">Severity (optional)</label>
+        <label class="pt" for="severity">Severidade (opcional)</label>
+        <select id="severity" name="severity">
+          <option value="">-</option>
+          <option>Blocks play / Impede jogar</option>
+          <option>Wrong result, playable / Resultado errado, jog&aacute;vel</option>
+          <option>Cosmetic / Visual</option>
+          <option>Suggestion / Sugest&atilde;o</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="en" for="contact">Name / contact (optional)</label>
+        <label class="pt" for="contact">Nome / contato (opcional)</label>
+        <p class="hint">Only if you want a reply. / S&oacute; se quiser resposta.</p>
+        <input type="text" id="contact" name="contact">
+      </div>
+    </div>
+
+    <div class="card">
+      <button type="submit" class="primary" id="submit">Generate report / Gerar relat&oacute;rio</button>
+      <div class="msg" id="msg"></div>
+    </div>
+  </form>
+
+  <div class="card" id="report">
+    <label class="en" for="report_text">Your report &mdash; send it to the team</label>
+    <label class="pt">Envie este relat&oacute;rio para a equipe</label>
+    <p class="hint" id="send_hint"></p>
+    <textarea id="report_text" readonly></textarea>
+    <div class="row">
+      <button type="button" id="copy">Copy / Copiar</button>
+      <button type="button" id="download">Download .md</button>
+      <button type="button" id="email" hidden>Open in e-mail / Abrir no e-mail</button>
+    </div>
+    <div class="msg" id="msg2"></div>
+  </div>
+
+  <footer>
+    No login, no tracking, no cookies. Your answers stay in this browser tab until you send them.<br>
+    Sem login, sem rastreamento, sem cookies. As respostas ficam nesta aba at&eacute; voc&ecirc; enviar.
+  </footer>
+</main>
+
+<script>
+"use strict";
+/* ---------------------------------------------------------------------------
+   CONFIG - ops: the two knobs below are the only things to change.
+   1. TEAM_EMAIL: address that receives reports (enables the "Open in e-mail"
+      button). Leave "" to hide it and rely on chat/paste delivery.
+   2. FEEDBACK_ENDPOINT: optional HTTP endpoint that accepts the report as
+      JSON POST (e.g. https://formsubmit.co/ajax/<email>, a Formspree form URL,
+      a Google Apps Script web app, a Supabase REST insert). Leave "" to keep
+      the page fully offline/local. See README.md in this repo.
+   Never put an API secret here: this page is public.
+--------------------------------------------------------------------------- */
+var TEAM_EMAIL = "";
+var FEEDBACK_ENDPOINT = "";
+
+var $ = function (id) { return document.getElementById(id); };
+var form = $("form"), msg = $("msg"), msg2 = $("msg2");
+
+/* Prefill build version from the URL, e.g. .../?v=0.2.0 - lets the game/card
+   ship a link that already carries the build number. */
+var qv = new URLSearchParams(location.search).get("v");
+if (qv) { $("version").value = qv; }
+
+if (TEAM_EMAIL) { $("email").hidden = false; }
+
+/* Keep answers across accidental reloads. */
+var FIELDS = ["what", "steps", "device", "version", "shot", "severity", "contact"];
+var SAVE_KEY = "coalgrave_playtest_feedback_v1";
+try {
+  var saved = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}");
+  FIELDS.forEach(function (id) { if (saved[id]) { $(id).value = saved[id]; } });
+} catch (e) { /* ignore */ }
+form.addEventListener("input", function () {
+  var out = {};
+  FIELDS.forEach(function (id) { out[id] = $(id).value; });
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(out)); } catch (e) { /* ignore */ }
+});
+
+$("detect").addEventListener("click", function () {
+  var ua = navigator.userAgent, plat = navigator.platform || "";
+  var os = "unknown OS";
+  if (/Windows NT 10/.test(ua)) { os = "Windows 10/11"; }
+  else if (/Windows/.test(ua)) { os = "Windows"; }
+  else if (/Android/.test(ua)) { os = "Android"; }
+  else if (/iPhone|iPad/.test(ua)) { os = "iOS"; }
+  else if (/Mac OS X/.test(ua)) { os = "macOS"; }
+  else if (/Linux/.test(ua)) { os = "Linux"; }
+  var bits = [os];
+  var cores = navigator.hardwareConcurrency;
+  if (cores) { bits.push(cores + " CPU threads"); }
+  if (navigator.deviceMemory) { bits.push("~" + navigator.deviceMemory + " GB RAM"); }
+  if (plat && plat.indexOf(os.split(" ")[0]) === -1) { bits.push(plat); }
+  $("device").value = bits.join(" / ") + " (auto-detected)";
+  msg.textContent = "Detected - please add your model name / specs if you know them. " +
+                    "Detectado - complete com o modelo/specs se souber.";
+  msg.className = "msg";
+});
+
+function required(id) { return $(id).value.trim() !== ""; }
+
+function reportText() {
+  var L = [];
+  L.push("# Playtest feedback");
+  L.push("");
+  L.push("- **Build:** " + $("version").value.trim());
+  L.push("- **Device:** " + $("device").value.trim());
+  if ($("severity").value) { L.push("- **Severity:** " + $("severity").value); }
+  if ($("contact").value.trim()) { L.push("- **Contact:** " + $("contact").value.trim()); }
+  L.push("- **Sent at:** " + new Date().toISOString());
+  L.push("");
+  L.push("## What happened");
+  L.push("");
+  L.push($("what").value.trim());
+  L.push("");
+  L.push("## Steps to reproduce");
+  L.push("");
+  L.push($("steps").value.trim());
+  L.push("");
+  L.push("## Screenshot");
+  L.push("");
+  L.push($("shot").value.trim() ? $("shot").value.trim() : "(none provided)");
+  return L.join("\n");
+}
+
+form.addEventListener("submit", function (ev) {
+  ev.preventDefault();
+  var missing = [];
+  if (!required("what")) { missing.push("what happened / o que aconteceu"); }
+  if (!required("steps")) { missing.push("steps to reproduce / passos"); }
+  if (!required("device")) { missing.push("device / aparelho"); }
+  if (!required("version")) { missing.push("version / versao"); }
+  if (missing.length) {
+    msg.textContent = "Required field(s) missing: " + missing.join("; ") +
+                      " - Campos obrigatorios: " + missing.join("; ");
+    msg.className = "msg err";
+    $(missing[0].indexOf("what") === 0 ? "what" : "steps").focus();
+    return;
+  }
+  msg.textContent = "";
+  msg.className = "msg";
+  var text = reportText();
+  $("report_text").value = text;
+  $("report").style.display = "block";
+
+  if (FEEDBACK_ENDPOINT) {
+    var payload = {
+      what_happened: $("what").value.trim(),
+      repro_steps: $("steps").value.trim(),
+      device: $("device").value.trim(),
+      build: $("version").value.trim(),
+      screenshot_url: $("shot").value.trim(),
+      severity: $("severity").value,
+      contact: $("contact").value.trim(),
+      report_markdown: text
+    };
+    msg.textContent = "Sending... / Enviando...";
+    fetch(FEEDBACK_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(function (r) {
+      if (!r.ok) { throw new Error("HTTP " + r.status); }
+      msg.textContent = "Sent. Thank you! / Enviado. Obrigado!";
+      msg.className = "msg ok";
+      msg2.textContent = "A copy of your report is below if you want to keep it.";
+      try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignore */ }
+    }).catch(function (err) {
+      msg.textContent = "Send failed (" + err.message + "). Use the buttons below to copy or " +
+                        "download the report and send it to the team.";
+      msg.className = "msg err";
+      $("send_hint").scrollIntoView({ block: "center" });
+    });
+  } else {
+    msg.textContent = "Report ready below. / Relatorio pronto abaixo.";
+    msg.className = "msg ok";
+  }
+
+  if (TEAM_EMAIL && !FEEDBACK_ENDPOINT) {
+    $("send_hint").innerHTML = "Send it through the playtest chat, or use the e-mail button " +
+      "(address: <code>" + TEAM_EMAIL + "</code>).";
+  } else if (!FEEDBACK_ENDPOINT) {
+    $("send_hint").innerHTML = "Send it through the playtest chat (Discord / WhatsApp) - copy it, " +
+      "or download the file and attach it. / Envie pelo chat do playtest: copie ou baixe o arquivo e anexe.";
+  } else {
+    $("send_hint").innerHTML = "Keep a copy if you like. / Guarde uma copia se quiser.";
+  }
+  $("report").scrollIntoView({ block: "start" });
+});
+
+$("copy").addEventListener("click", function () {
+  var ta = $("report_text");
+  var done = function () { msg2.textContent = "Copied. / Copiado."; msg2.className = "msg ok"; };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(ta.value).then(done, function () { ta.select(); document.execCommand("copy"); done(); });
+  } else {
+    ta.removeAttribute("readonly"); ta.select(); document.execCommand("copy"); ta.setAttribute("readonly", "true"); done();
+  }
+});
+
+$("download").addEventListener("click", function () {
+  var stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  var name = "playtest-feedback-" + stamp + ".md";
+  var blob = new Blob([$("report_text").value], { type: "text/markdown" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = name; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  msg2.textContent = "Downloaded " + name; msg2.className = "msg ok";
+});
+
+$("email").addEventListener("click", function () {
+  var subject = "Playtest feedback - build " + $("version").value.trim();
+  location.href = "mailto:" + TEAM_EMAIL + "?subject=" + encodeURIComponent(subject) +
+                  "&body=" + encodeURIComponent($("report_text").value);
+});
+</script>
+</body>
+</html>
