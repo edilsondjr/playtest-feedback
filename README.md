@@ -132,6 +132,16 @@ type %USERPROFILE%\PlaytestFeedback\watch.log    # the new report must appear in
 
 ## Last end-to-end validation
 
+2026-09-12 (t_699678a5, commit 955002f) — the duplicate defect is closed. Two activations of the send
+button in one page session used to publish the report twice (measured on the live page before the
+fix: `2` POSTs, two topic messages `dmoOFjULBUlj` / `oIDmU8bfa7GV` with identical content, relay ids
+36s apart in the original report); on the fixed page the same double activation issues **1** POST,
+and the collector drops a repeat of an already archived report by content
+(`skipped 2 duplicate report(s) already archived: OYV4r95VTg2b, oIDmU8bfa7GV` on the real topic, with
+no digest for them). `tools/e2e_submit.mjs` on the live page: exit 0, one message
+(`TqrZz6OpTb8l`), green `Sent.`. Gates: `node tools/test_form.mjs` 42/42,
+`python tools/test_collector.py` 12/12, `python tools/collect_feedback.py --selftest` PASS PASS.
+
 2026-09-12 — report `jBuf3VjTvpca` submitted from the live page in a real Chrome (all 8 fields
 intact, `build v0.2.0`, device auto-detected, screenshot link present), delivered to
 `%USERPROFILE%\PlaytestFeedback\inbox.jsonl` and to the Telegram digest with no failure line in
@@ -150,6 +160,10 @@ python tools/collect_feedback.py --selftest                                     
 
 ## What to do when it breaks
 
+- **The same report shows up twice in the archive / digest:** the page guard and the collector's
+  content dedupe both cover this, so first re-run both gates (`node tools/test_form.mjs`,
+  `python tools/test_collector.py`). Duplicates that were archived *before* the fix are left alone on
+  purpose: the archive is the store of record and is never rewritten.
 - **404 on the URL:** Pages disabled or the branch/path changed — check
   `gh api repos/edilsondjr/playtest-feedback/pages`; re-enable with
   `gh api -X POST repos/edilsondjr/playtest-feedback/pages -f 'source[branch]=main' -f 'source[path]=/'`.
