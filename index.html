@@ -157,6 +157,8 @@ var FEEDBACK_ENDPOINT = "";
 
 var $ = function (id) { return document.getElementById(id); };
 var form = $("form"), msg = $("msg"), msg2 = $("msg2");
+/* Older embedded webviews and headless DOMs may not implement scrollIntoView. */
+function reveal(el) { if (el && typeof el.scrollIntoView === "function") { el.scrollIntoView({ block: "start" }); } }
 
 /* Prefill build version from the URL, e.g. .../?v=0.2.0 - lets the game/card
    ship a link that already carries the build number. */
@@ -227,15 +229,15 @@ function reportText() {
 form.addEventListener("submit", function (ev) {
   ev.preventDefault();
   var missing = [];
-  if (!required("what")) { missing.push("what happened / o que aconteceu"); }
-  if (!required("steps")) { missing.push("steps to reproduce / passos"); }
-  if (!required("device")) { missing.push("device / aparelho"); }
-  if (!required("version")) { missing.push("version / versao"); }
+  if (!required("what")) { missing.push(["what", "what happened / o que aconteceu"]); }
+  if (!required("steps")) { missing.push(["steps", "steps to reproduce / passos"]); }
+  if (!required("device")) { missing.push(["device", "device / aparelho"]); }
+  if (!required("version")) { missing.push(["version", "version / versao"]); }
   if (missing.length) {
-    msg.textContent = "Required field(s) missing: " + missing.join("; ") +
-                      " - Campos obrigatorios: " + missing.join("; ");
+    var names = missing.map(function (m) { return m[1]; }).join("; ");
+    msg.textContent = "Required field(s) missing: " + names + " - Campos obrigatorios: " + names;
     msg.className = "msg err";
-    $(missing[0].indexOf("what") === 0 ? "what" : "steps").focus();
+    $(missing[0][0]).focus();
     return;
   }
   msg.textContent = "";
@@ -270,7 +272,7 @@ form.addEventListener("submit", function (ev) {
       msg.textContent = "Send failed (" + err.message + "). Use the buttons below to copy or " +
                         "download the report and send it to the team.";
       msg.className = "msg err";
-      $("send_hint").scrollIntoView({ block: "center" });
+      reveal($("send_hint"));
     });
   } else {
     msg.textContent = "Report ready below. / Relatorio pronto abaixo.";
@@ -286,7 +288,7 @@ form.addEventListener("submit", function (ev) {
   } else {
     $("send_hint").innerHTML = "Keep a copy if you like. / Guarde uma copia se quiser.";
   }
-  $("report").scrollIntoView({ block: "start" });
+  reveal($("report"));
 });
 
 $("copy").addEventListener("click", function () {

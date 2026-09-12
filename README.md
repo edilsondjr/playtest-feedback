@@ -48,10 +48,15 @@ report with **Copy**, **Download .md** and the instruction to send it through th
 
 ```sh
 cd playtest-feedback
+node tools/test_form.mjs        # gate: 20 checks, must exit 0
 git add -A && git commit -m "form: <change>" && git push
 ```
 
 GitHub Pages rebuilds `main` / root automatically (1-2 min).
+
+`tools/test_form.mjs` loads `index.html` in jsdom (`npm i` installs it) and exercises the required-field
+validation, the report generation and the `?v=` prefill, and fails on any uncaught page error. Run it
+before every push: a broken `index.html` is otherwise only visible to a tester mid-playtest.
 
 ## Verify it is actually live (run from any machine, no auth)
 

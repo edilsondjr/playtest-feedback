@@ -1,0 +1,23 @@
+{
+  "name": "playtest-feedback",
+  "version": "1.0.0",
+  "description": "Static, login-free feedback form published on GitHub Pages. Testers open the URL, fill it in and send the generated report to the team through the playtest chat.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edilsondjr/playtest-feedback.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/edilsondjr/playtest-feedback/issues"
+  },
+  "homepage": "https://github.com/edilsondjr/playtest-feedback#readme",
+  "dependencies": {
+    "jsdom": "^30.0.1"
+  }
+}
