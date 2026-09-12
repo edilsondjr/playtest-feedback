@@ -36,7 +36,8 @@ https://ntfy.sh/playtest-feedback-453f452c55eb4e77
 - **Read side (any team member, no install):** open <https://ntfy.sh/playtest-feedback-453f452c55eb4e77>
   in a browser, or subscribe to that topic in the ntfy app for a push notification per report.
 - **Store of record:** `%USERPROFILE%\PlaytestFeedback\inbox.jsonl` — append-only JSONL, written by
-  `tools/collect_feedback.py`. One line per report, full payload, dedup by relay message id.
+  `tools/collect_feedback.py`. One line per report, full payload, deduplicated by relay message id
+  **and** by report content (so the same report POSTed twice is archived once).
 - **Notification:** the same collector pings the team on Telegram
   (`hermes send --to telegram`) with a compact digest whenever a new report lands.
 - **Known limit:** ntfy.sh keeps a topic's messages for ~12h, so the collector must run more often
@@ -65,14 +66,16 @@ endpoint URL. A publish-only URL is the only kind that may live here.**
 
 The collector prints nothing when there is nothing new (watchdog style), so an empty log means
 "quiet", not "broken". A failure is loud: exit code 2 (destination unreachable) or 3 (archived but
-notification failed) plus the reason in the log.
+notification failed) plus the reason in the log. When it drops a repeat of an already archived report
+it says so (`skipped 1 duplicate report(s) already archived: <relay id>`) and sends no digest.
 
 ## Publish / republish
 
 ```sh
 cd playtest-feedback
 npm i                            # jsdom, first time only
-node tools/test_form.mjs         # gate: 33 checks, must exit 0
+node tools/test_form.mjs         # gate: 42 checks, must exit 0
+python tools/test_collector.py   # gate: 12 checks, must exit 0 (no network)
 git add -A && git commit -m "form: <change>" && git push
 ```
 
@@ -82,8 +85,17 @@ GitHub Pages rebuilds `main` / root automatically (1-2 min).
 
 `tools/test_form.mjs` — headless gate. Loads `index.html` in jsdom and checks the required fields,
 the blocked empty submit, the generated report, the `?v=` prefill, **that the page really POSTs the
-full payload to the configured endpoint**, and that an HTTP/network failure is shown to the tester
-instead of failing silently. `fetch` is stubbed, so the gate never touches the network.
+full payload to the configured endpoint**, that an HTTP/network failure is shown to the tester
+instead of failing silently, and that **two activations of the send button on the same page produce a
+single POST** (the button is disabled and re-armed when the send settles). `fetch` is stubbed, so the
+gate never touches the network.
+
+`tools/test_collector.py` — gate for the archive side (stdlib only): runs `collect_feedback.py`
+against a local stand-in for the relay and a throwaway archive. It replays the real duplicate (same
+report, two relay ids, payloads differing only in the `Sent at:` line of `report_markdown`) and
+asserts that the repeat adds no line, prints no digest and never reaches the notification step, that
+two copies arriving in one batch collapse to one record, and — as a control — that a genuinely new
+report still archives and still notifies. No network, no credentials.
 
 `tools/collect_feedback.py` — the destination side (stdlib only, Python 3.8+):
 

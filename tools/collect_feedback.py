@@ -26,6 +26,7 @@ Exit codes
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -50,6 +51,11 @@ MSG_LIMIT = 3400  # keep the notification under Telegram's 4096-char cap
 # The exact payload the page posts (index.html -> submit handler). Keep in sync.
 PAGE_FIELDS = ["what_happened", "repro_steps", "device", "build",
                "screenshot_url", "severity", "contact", "report_markdown"]
+
+# What the tester actually wrote. report_markdown is excluded on purpose: it is a
+# rendering of these same fields plus the moment of submission ("Sent at:"), so
+# two POSTs of the same report from the same page differ only in that line.
+CONTENT_FIELDS = [f for f in PAGE_FIELDS if f != "report_markdown"]
 
 
 def log(msg):
@@ -124,6 +130,18 @@ def as_payload(rec):
     except ValueError:
         pass
     return {"what_happened": raw}
+
+
+def content_key(payload):
+    """Fingerprint of the report's content, order-independent.
+
+    Whitespace is collapsed so a re-submit with a stray newline is still the
+    same report. Used *in addition to* the relay id: a duplicate POST gets a
+    fresh id every time, so ids alone can never catch it.
+    """
+    norm = {k: " ".join(str(payload.get(k) or "").split()) for k in CONTENT_FIELDS}
+    blob = json.dumps(norm, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
 def one_line(value, width=400):
@@ -258,8 +276,21 @@ def main(argv=None):
     except Exception as err:  # noqa: BLE001 - network, DNS, HTTP status, bad JSON
         sys.exit("destination unreachable (%s): %s" % (endpoint, err))
 
-    _, seen = load_archive(args.archive)
-    new = [m for m in messages if m.get("id") and m["id"] not in seen]
+    records, seen = load_archive(args.archive)
+    seen_content = set(content_key(as_payload(r)) for r in records)
+    new, dupes = [], []
+    for m in messages:
+        if not m.get("id") or m["id"] in seen:
+            continue  # already archived under this relay id
+        key = content_key(as_payload(m))
+        if key in seen_content:
+            dupes.append(m)
+            continue  # same report, new relay id: a repeat of something archived
+        seen_content.add(key)  # also collapses duplicates inside this batch
+        new.append(m)
+    if dupes:
+        log("skipped %d duplicate report(s) already archived: %s"
+            % (len(dupes), ", ".join(str(d.get("id")) for d in dupes)))
     if not new:
         return 0  # silent: watchdog-style, the team hears nothing when there is nothing
 

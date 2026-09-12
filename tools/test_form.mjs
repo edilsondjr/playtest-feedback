@@ -181,6 +181,61 @@ check("endpoint is not a secret-bearing URL (page is public)",
     document.getElementById("msg").textContent.slice(0, 90));
 }
 
+// 8. two identical submits on the SAME page must not publish the report twice
+{
+  const { document, submit, calls } = load();
+  fill(document);
+  submit();
+  submit();  // second activation while the first send is still in flight
+  await tick();
+  check("double submit on the same page posts exactly once",
+    calls.length === 1, `calls=${calls.length}`);
+}
+
+// 9. the button is taken out of action while sending, and handed back after
+{
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const { document, submit, calls } = load("", () => gate.then(() => ({ ok: true, status: 200 })));
+  fill(document);
+  const button = document.getElementById("submit");
+  submit();
+  await tick();
+  check("send button is disabled while the send is in flight", button.disabled === true);
+  submit();
+  await tick();
+  check("an in-flight second submit is blocked", calls.length === 1, `calls=${calls.length}`);
+  release();
+  await tick();
+  await tick();
+  check("button re-enabled once the send settles", button.disabled === false);
+  check("the finished send is reported as sent",
+    /Sent\./.test(document.getElementById("msg").textContent));
+  submit();
+  await tick();
+  check("a later submit is a new report and posts again", calls.length === 2, `calls=${calls.length}`);
+}
+
+// 10. a failed send rearms the guard, so a retry is possible
+{
+  let fail = true;
+  const { document, submit, calls } = load("", () =>
+    fail ? Promise.resolve({ ok: false, status: 500 }) : Promise.resolve({ ok: true, status: 200 }));
+  fill(document);
+  submit();
+  await tick();
+  check("a failed send is reported once, not twice",
+    calls.length === 1 && /Send failed \(HTTP 500\)/.test(document.getElementById("msg").textContent),
+    `calls=${calls.length}`);
+  fail = false;
+  submit();
+  await tick();
+  check("after a failure the guard is rearmed and the retry posts",
+    calls.length === 2, `calls=${calls.length}`);
+  check("the retry is reported as sent", /Sent\./.test(document.getElementById("msg").textContent),
+    document.getElementById("msg").textContent.slice(0, 80));
+}
+
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
 process.exit(failed.length ? 1 : 0);

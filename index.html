@@ -176,6 +176,10 @@ if (TEAM_EMAIL) { $("email").hidden = false; }
 /* Keep answers across accidental reloads. */
 var FIELDS = ["what", "steps", "device", "version", "shot", "severity", "contact"];
 var SAVE_KEY = "coalgrave_playtest_feedback_v1";
+/* One report, one POST. Set while a send is in flight and cleared when it
+   settles (success or failure), so a second click, a double-click or Enter
+   cannot publish the same report twice. */
+var sending = false;
 try {
   var saved = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}");
   FIELDS.forEach(function (id) { if (saved[id]) { $(id).value = saved[id]; } });
@@ -234,6 +238,7 @@ function reportText() {
 
 form.addEventListener("submit", function (ev) {
   ev.preventDefault();
+  if (sending) { return; }  // a send is already in flight: ignore this one
   var missing = [];
   if (!required("what")) { missing.push(["what", "what happened / o que aconteceu"]); }
   if (!required("steps")) { missing.push(["steps", "steps to reproduce / passos"]); }
@@ -263,6 +268,8 @@ form.addEventListener("submit", function (ev) {
       contact: $("contact").value.trim(),
       report_markdown: text
     };
+    sending = true;
+    $("submit").disabled = true;
     msg.textContent = "Sending... / Enviando...";
     fetch(FEEDBACK_ENDPOINT, {
       method: "POST",
@@ -279,6 +286,9 @@ form.addEventListener("submit", function (ev) {
                         "download the report and send it to the team.";
       msg.className = "msg err";
       reveal($("send_hint"));
+    }).then(function () {
+      sending = false;                 // rearm: a failure must be retryable
+      $("submit").disabled = false;
     });
   } else {
     msg.textContent = "Report ready below. / Relatorio pronto abaixo.";
