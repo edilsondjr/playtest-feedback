@@ -1,7 +1,9 @@
 // Headless gate for the playtest feedback form.
 //   node tools/test_form.mjs
-// Loads index.html in jsdom, exercises the required-field validation and the
-// report generation. Exit code 0 = all checks passed.
+// Loads index.html in jsdom, exercises required-field validation, report
+// generation AND the delivery wiring (does the page really POST the report to
+// the configured destination, and does it surface failures?). Exit 0 = all
+// checks passed. No network access: fetch is stubbed.
 import { readFileSync } from "node:fs";
 import { JSDOM, VirtualConsole } from "jsdom";
 
@@ -16,8 +18,11 @@ function check(name, ok, detail = "") {
 
 let pageErrors = [];
 
-function load(search = "") {
+// Stub fetch on every load: jsdom has no fetch, and the form calls it on submit.
+// `impl` lets a test decide how the destination answers (ok / HTTP error).
+function load(search = "", impl = null) {
   pageErrors = [];
+  const calls = [];
   const virtualConsole = new VirtualConsole();
   virtualConsole.on("jsdomError", (e) => pageErrors.push(e.message));
   virtualConsole.on("error", (m) => pageErrors.push(String(m)));
@@ -26,6 +31,14 @@ function load(search = "") {
     runScripts: "dangerously",
     pretendToBeVisual: true,
     virtualConsole,
+    beforeParse(window) {
+      window.fetch = (url, opts = {}) => {
+        calls.push({ url, opts });
+        const answer = impl ? impl(url, opts)
+                            : Promise.resolve({ ok: true, status: 200 });
+        return Promise.resolve(answer);
+      };
+    },
   });
   const { document } = dom.window;
   const submit = () => {
@@ -33,8 +46,24 @@ function load(search = "") {
       new dom.window.Event("submit", { bubbles: true, cancelable: true })
     );
   };
-  return { dom, document, submit };
+  return { dom, document, submit, calls };
 }
+
+function fill(document, over = {}) {
+  const values = Object.assign({
+    what: "Game froze on the third station.",
+    steps: "1. Start run\n2. Pick coal\n3. Frozen screen",
+    device: "Windows 11 / i5-9400F / 16 GB",
+    version: "v0.2.0",
+    shot: "https://example.com/shot.png",
+    contact: "tester@example.com",
+  }, over);
+  for (const [id, value] of Object.entries(values)) {
+    document.getElementById(id).value = value;
+  }
+}
+
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 // 1. required fields exist with the required attribute
 {
@@ -64,10 +93,7 @@ function load(search = "") {
 // 3. filled submit produces the structured report
 {
   const { document, submit } = load();
-  document.getElementById("what").value = "Game froze on the third station.";
-  document.getElementById("steps").value = "1. Start run\n2. Pick coal\n3. Frozen screen";
-  document.getElementById("device").value = "Windows 11 / i5-9400F / 16 GB";
-  document.getElementById("version").value = "v0.2.0";
+  fill(document, { shot: "", contact: "" });
   submit();
   const text = document.getElementById("report_text").value;
   check("filled submit shows the report",
@@ -91,6 +117,68 @@ function load(search = "") {
   check("?v= pre-fills the build field",
     document.getElementById("version").value === "0.3.1",
     "got '" + document.getElementById("version").value + "'");
+}
+
+// 5. the destination is configured and the page really posts to it
+const endpoint = (html.match(/var\s+FEEDBACK_ENDPOINT\s*=\s*"([^"]*)"/) || [])[1] || "";
+check("FEEDBACK_ENDPOINT is configured", /^https:\/\/\S+$/.test(endpoint),
+  endpoint || "empty - reports would only reach the tester");
+check("endpoint is not a secret-bearing URL (page is public)",
+  !!endpoint && !/[?&](token|key|secret)=/i.test(endpoint), endpoint);
+{
+  const { document, submit, calls } = load();
+  fill(document);
+  submit();
+  await tick();
+  check("submit posts exactly once", calls.length === 1, `calls=${calls.length}`);
+  const call = calls[0] || { url: undefined, opts: {} };
+  check("posts to the configured destination", call.url === endpoint, String(call.url));
+  check("uses POST with a JSON content type",
+    call.opts.method === "POST" &&
+    /application\/json/i.test((call.opts.headers || {})["Content-Type"] || ""),
+    call.opts.method);
+  let body = {};
+  try { body = JSON.parse(call.opts.body); } catch (e) { /* leave body empty */ }
+  const wanted = ["what_happened", "repro_steps", "device", "build", "screenshot_url",
+                  "severity", "contact", "report_markdown"];
+  check("body carries all 8 report fields",
+    wanted.every((k) => k in body), Object.keys(body).join(","));
+  check("body mirrors the typed values",
+    body.what_happened === "Game froze on the third station." &&
+    body.device === "Windows 11 / i5-9400F / 16 GB" &&
+    body.build === "v0.2.0" &&
+    body.report_markdown === document.getElementById("report_text").value);
+  check("accepted send is reported as sent",
+    /Sent\./.test(document.getElementById("msg").textContent),
+    document.getElementById("msg").textContent.slice(0, 80));
+  check("no uncaught page errors while posting", pageErrors.length === 0,
+    pageErrors.join(" | ").slice(0, 140));
+}
+
+// 6. a failing destination is surfaced, never silent
+{
+  const { document, submit } = load("", () => Promise.resolve({ ok: false, status: 500 }));
+  fill(document);
+  submit();
+  await tick();
+  const msg = document.getElementById("msg").textContent;
+  check("HTTP failure is shown with its status", /Send failed \(HTTP 500\)/.test(msg),
+    msg.slice(0, 90));
+  check("failure falls back to copy/download hint",
+    /copy|download/i.test(document.getElementById("send_hint").innerHTML));
+  check("failure keeps the report on screen for the tester",
+    document.getElementById("report_text").value.length > 100);
+}
+
+// 7. a rejected request (offline) is surfaced too
+{
+  const { document, submit } = load("", () => Promise.reject(new Error("NetworkError")));
+  fill(document);
+  submit();
+  await tick();
+  check("network failure is shown to the tester",
+    /Send failed \(NetworkError\)/.test(document.getElementById("msg").textContent),
+    document.getElementById("msg").textContent.slice(0, 90));
 }
 
 const failed = results.filter((r) => !r.ok);

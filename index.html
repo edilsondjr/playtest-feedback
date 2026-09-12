@@ -146,14 +146,20 @@
    CONFIG - ops: the two knobs below are the only things to change.
    1. TEAM_EMAIL: address that receives reports (enables the "Open in e-mail"
       button). Leave "" to hide it and rely on chat/paste delivery.
-   2. FEEDBACK_ENDPOINT: optional HTTP endpoint that accepts the report as
-      JSON POST (e.g. https://formsubmit.co/ajax/<email>, a Formspree form URL,
-      a Google Apps Script web app, a Supabase REST insert). Leave "" to keep
-      the page fully offline/local. See README.md in this repo.
-   Never put an API secret here: this page is public.
+   2. FEEDBACK_ENDPOINT: HTTP endpoint that receives the report as a JSON POST.
+      It is set to the shared ntfy.sh topic below: a write-only publish URL with
+      no account, no API key and no mailbox needed. Browsers are allowed to post
+      to it from anywhere (CORS *), the team reads it at
+      https://ntfy.sh/<topic> or through tools/collect_feedback.py, which
+      archives every report under ~/PlaytestFeedback/inbox.jsonl and can ping
+      Telegram. Swap it later for https://formsubmit.co/ajax/<mailbox> or a
+      Formspree URL once the official support mailbox exists
+      (docs/canal-suporte.md in the game repo).
+   Never put an API secret here: this page is public, so the endpoint URL must
+   stay a write-only one (anyone can read this file).
 --------------------------------------------------------------------------- */
 var TEAM_EMAIL = "";
-var FEEDBACK_ENDPOINT = "";
+var FEEDBACK_ENDPOINT = "https://ntfy.sh/playtest-feedback-453f452c55eb4e77";
 
 var $ = function (id) { return document.getElementById(id); };
 var form = $("form"), msg = $("msg"), msg2 = $("msg2");
