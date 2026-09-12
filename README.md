@@ -97,6 +97,36 @@ python tools/collect_feedback.py --dump          # what is in the archive
 It reads the endpoint from `index.html`, so the page and the collector can never disagree.
 Exit codes: 0 ok, 1 selftest failed, 2 destination unreachable, 3 archived but notification failed.
 
+`tools/e2e_submit.mjs` — end-to-end validation driver (Node 22+, no dependency). Opens the **live**
+page in a real Chrome over CDP, fills the required fields the way a tester does (including the page's
+own "detect device" button), publishes a screenshot so the report carries a real link, submits, waits
+for the green confirmation and saves before/filled/sent screenshots. Prints a JSON report and exits 0
+only when the page confirmed the send.
+
+```sh
+# one terminal: real Chrome with a debugging port and a throwaway profile
+"/c/Program Files/Google/Chrome/Application/chrome.exe" --remote-debugging-port=9333 \
+  --user-data-dir="C:/Users/<you>/AppData/Local/Temp/cdp-e2e" about:blank &
+# another: drive it
+node tools/e2e_submit.mjs 9333 "https://edilsondjr.github.io/playtest-feedback/?v=v0.2.0" ./out e2e
+```
+
+A green `Sent.` from the page only means the relay accepted the POST. Finish the loop by hand:
+
+```sh
+schtasks /Run /TN PlaytestFeedbackWatch    # or wait for the 15-min tick
+type %USERPROFILE%\PlaytestFeedback\watch.log    # the new report must appear in the digest
+```
+
+## Last end-to-end validation
+
+2026-09-12 — report `jBuf3VjTvpca` submitted from the live page in a real Chrome (all 8 fields
+intact, `build v0.2.0`, device auto-detected, screenshot link present), delivered to
+`%USERPROFILE%\PlaytestFeedback\inbox.jsonl` and to the Telegram digest with no failure line in
+`watch.log`. The same run re-verified the build side: the exported `coalgrave_playtest_v0.2.0_win64`
+pressed its own "SEND PLAYTEST FEEDBACK" button, which opened the live form in the default browser
+(`FBL_PROBE=PASS`, `FBL_HTTP 200 / 15501 bytes` fetched from inside the game).
+
 ## Verify it is actually live (run from any machine, no auth)
 
 ```sh
